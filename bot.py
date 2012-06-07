@@ -1,4 +1,5 @@
 from curtana.common import userstream
+from curtana.common.twitterlib import ApiMod
 from lisabot3.lisa.response import ResponderLisa
 import threading
 import itertools as I
@@ -23,4 +24,8 @@ def main():
     consume(REGISTERD_NAME, ResponderLisa(REGISTERD_NAME))
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if sys.argv[1] == "run":
+        main()
+    elif sys.argv[1] == "post":
+        ApiMod.from_name("Lisa_math").updateStatus(status=sys.argv[2])

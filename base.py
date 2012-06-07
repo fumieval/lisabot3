@@ -18,7 +18,7 @@ class ResponderBase:
         
     @wrapIO
     def favorite(self, status):
-        return self.api.createFavorite(id=status["id"])
+        return self.api.createFavorite(id=unicode(status["id"]))
 
     @joinIO
     def ping(self, status):

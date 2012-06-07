@@ -19,6 +19,7 @@ def compose(f, g):
     return lambda x: f(g(x))
 
 c = compose
+j = lambda f: lambda x, y: lambda z: f(x(z), y(z))
 
 class ResponderLisa(ResponderBase, ResponderVocab):
     
@@ -31,11 +32,11 @@ class ResponderLisa(ResponderBase, ResponderVocab):
         self.pattern = (RE("もしゃもしゃ|モシャモシャ|もふもふ|モフモフ") >> R(self.response0)
                         | RE("(^|む|[^く])ぎゅ[っうぅー]?") >> R(self.response1)
                         | RE("なでなで|ナデナデ") >> R(self.response2)
-                        | RE("ぺろぺろ|ペロペロ|ちゅっちゅ｜チュッチュ") >> R(self.response3)
-                        | RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)") >> R(self.response4)
+                        | RE("ぺろぺろ|ペロペロ|ちゅっちゅ｜チュッチュ") >> R(self.response3) 
                         | R(self.response5)
                         )
-
+        self.voluntary = RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)") >> R(self.response4 self.favorite)
+        
     @joinIO
     def for_mizutani(self, status):
         
@@ -63,11 +64,17 @@ class ResponderLisa(ResponderBase, ResponderVocab):
             level += 2
         if re.search("@" + self.screen_name.lower() + "[^\w_]", text_lower):
             level += 2
-
-        if level >= 2:
-            self.talked.append(status["user"]["screen_name"])
-            if level >= 4:
-                return self.pattern(ENTITIES.sub("", status["text"]))(status)
+        
+        text = ENTITIES.sub("", status["text"])
+        
+        if level >= 1:
+            res = self.voluntary(text)(status)
+            if res:
+                return res
+            if level >= 2:
+                self.talked.append(status["user"]["screen_name"])
+                if level >= 4:
+                    return self.pattern(text)(status)
         
         return Return(IOZero)
 
