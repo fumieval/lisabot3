@@ -35,7 +35,8 @@ class ResponderLisa(ResponderBase, ResponderVocab):
                         | RE("ぺろぺろ|ペロペロ|ちゅっちゅ｜チュッチュ") >> R(self.response3) 
                         | R(self.response5)
                         )
-        self.voluntary = RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)") >> R(self.response4 self.favorite)
+        self.voluntary = (RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)")
+                         >> R(operator.rshift(*fanout(self.response4, self.favorite))))
         
     @joinIO
     def for_mizutani(self, status):
@@ -68,13 +69,15 @@ class ResponderLisa(ResponderBase, ResponderVocab):
         text = ENTITIES.sub("", status["text"])
         
         if level >= 1:
-            res = self.voluntary(text)(status)
+            res = self.voluntary(text)
             if res:
-                return res
+                return res(status)
             if level >= 2:
                 self.talked.append(status["user"]["screen_name"])
                 if level >= 4:
-                    return self.pattern(text)(status)
+                    res = self.pattern(text)
+                    if res:
+                        return res(status)
         
         return Return(IOZero)
 
