@@ -1,25 +1,22 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
+from curtana.lib.prelude import star, compose, fanout
 from curtana.lib.monadIO import *
-from curtana.lib.stream import bufferBy
+from curtana.lib.stream import Map, BufferBy
 from curtana.common.twitterlib import ApiMod
 from lisabot3.base import ResponderBase
 from lisabot3.lisa.vocab import ResponderVocab
 
 import re
 import datetime
-import operator
+import operator as OP
 from itertools import imap
 from functools import partial
 
+GROUPER = BufferBy(compose(partial(OP.lt, 140 - 6), compose(sum, Map(len))))
+
 ENTITIES = re.compile("[QR]T @\w+.*|\.(@\w+ )+|http:\/\/(\w+|\.|\/)*|@\w+")
-
-def compose(f, g):
-    return lambda x: f(g(x))
-
-c = compose
-j = lambda f: lambda x, y: lambda z: f(x(z), y(z))
 
 class ResponderLisa(ResponderBase, ResponderVocab):
     
@@ -35,24 +32,26 @@ class ResponderLisa(ResponderBase, ResponderVocab):
                         | RE("ぺろぺろ|ペロペロ|ちゅっちゅ｜チュッチュ") >> R(self.response3) 
                         | R(self.response5)
                         )
-        self.voluntary = RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)") >> R(j(operator.rshift)(self.response4, self.favorite))
-        
+        self.voluntary = (RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)")
+                         #>> R(compose(star(OP.rshift), fanout(self.response4, self.favorite)))
+                         >> R(self.response4)
+                         |RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)") >> R(self.favorite))
+
     @joinIO
     def for_mizutani(self, status):
         
-        if status["user"]["screen_name"] == "mizutani_j_bot":
-            if "下校時間です" in status["text"]:
-                if self.talked:
-                    mentions = bufferBy(c(partial(operator.lt, 140 - 6),
-                                          c(sum, partial(imap, len)))
-                                        , ("@" + x + " " for x in self.talked))
-                    return sequence(self.post(".{0} 《下校》".format("".join(mention))) for mention in mentions)
-                else:
-                    return self.post("帰る")
+        if status["user"]["screen_name"] != "mizutani_j_bot":
+            return Return(IOZero)
+            
+        if "下校時間です" in status["text"]:
+            if self.talked:
+                mentions = GROUPER("@" + x + " " for x in self.talked)
+                return sequence(self.post(".{0} 《下校》".format("".join(mention))) for mention in mentions)
             else:
-                return self.favorite(status)
+                return self.post("帰る")
+        else:
+            return self.favorite(status)
         
-        return Return(IOZero)
 
     @joinIO
     def for_everyone(self, status):
@@ -68,13 +67,17 @@ class ResponderLisa(ResponderBase, ResponderVocab):
         text = ENTITIES.sub("", status["text"])
         
         if level >= 1:
-            res = self.voluntary(text)(status)
-            if res:
-                return res
+            action = self.voluntary(text)
+            if action:
+                return action(status)
+            
             if level >= 2:
                 self.talked.append(status["user"]["screen_name"])
+                
                 if level >= 4:
-                    return self.pattern(text)(status)
+                    action = self.pattern(text)
+                    if action:
+                        return action(status)
         
         return Return(IOZero)
 

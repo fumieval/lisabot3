@@ -2,8 +2,6 @@ from curtana.common import userstream
 from curtana.common.twitterlib import ApiMod
 from lisabot3.lisa.response import ResponderLisa
 import threading
-import itertools as I
-import json
 
 REGISTERD_NAME = "Lisa_math"
 
@@ -16,7 +14,7 @@ class Execute(threading.Thread):
         self.action.do()
 
 def consume(name, responder):
-    stream = I.imap(json.loads, userstream.iterstream(userstream.streamopen(name)))
+    stream = userstream.iterstream(userstream.streamopen(name))
     for status in stream:
         Execute(responder.action(status)).start()
 
@@ -28,4 +26,4 @@ if __name__ == "__main__":
     if sys.argv[1] == "run":
         main()
     elif sys.argv[1] == "post":
-        ApiMod.from_name("Lisa_math").updateStatus(status=sys.argv[2])
+        ApiMod.from_name(REGISTERD_NAME).updateStatus(status=sys.argv[2])

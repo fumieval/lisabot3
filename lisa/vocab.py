@@ -15,6 +15,7 @@ class ResponderVocab:
         return random.choice(els).format(name=status["user"]["name"])
     
     def response0(self, status):
+
         r = partial(self.reply, status)
         return r(self.choice(status,
                              [(15, ["きゃうん！", "きゃうん…", "きゃん！", "……コンティニュー//", "……つづけて//", "やめて…",]),
