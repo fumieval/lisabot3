@@ -18,8 +18,7 @@ ENTITIES = re.compile("[QR]T @\w+.*|\.(@\w+ )+|http:\/\/(\w+|\.|\/)*|@\w+")
 def compose(f, g):
     return lambda x: f(g(x))
 
-c = compose
-j = lambda f: lambda x, y: lambda z: f(x(z), y(z))
+fanout = lambda x, y: lambda z: (x(z), y(z))
 
 class ResponderLisa(ResponderBase, ResponderVocab):
     
@@ -44,8 +43,8 @@ class ResponderLisa(ResponderBase, ResponderVocab):
         if status["user"]["screen_name"] == "mizutani_j_bot":
             if "下校時間です" in status["text"]:
                 if self.talked:
-                    mentions = bufferBy(c(partial(operator.lt, 140 - 6),
-                                          c(sum, partial(imap, len)))
+                    mentions = bufferBy(compose(partial(operator.lt, 140 - 6),
+                                        compose(sum, partial(imap, len)))
                                         , ("@" + x + " " for x in self.talked))
                     return sequence(self.post(".{0} 《下校》".format("".join(mention))) for mention in mentions)
                 else:
@@ -69,15 +68,17 @@ class ResponderLisa(ResponderBase, ResponderVocab):
         text = ENTITIES.sub("", status["text"])
         
         if level >= 1:
-            res = self.voluntary(text)
-            if res:
-                return res(status)
+            action = self.voluntary(text)
+            if action:
+                return action(status)
+            
             if level >= 2:
                 self.talked.append(status["user"]["screen_name"])
+                
                 if level >= 4:
-                    res = self.pattern(text)
-                    if res:
-                        return res(status)
+                    action = self.pattern(text)
+                    if action:
+                        return action(status)
         
         return Return(IOZero)
 
