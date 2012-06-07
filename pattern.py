@@ -6,7 +6,7 @@ from curtana.lib.parser_aliases import C, S, P, R, T, RE
 
 import itertools as I
 
-DELIMITER = +(reduce(Parser.ap, I.imap(C, [" ", "　", ",", ".", "、", "。"])))
+DELIMITER = +(reduce(Parser.__or__, I.imap(C, [" ", "　", ",", ".", "、", "。"])))
 
 DECIMAL = int ** +P(unicode.isdigit)
 HEXADECIMAL = S("0x") >> int ** +P("0123456789abcdef０１２３４５６７８９".__contains__) * R(16)
