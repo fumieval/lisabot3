@@ -35,7 +35,7 @@ class ResponderLisa(ResponderBase, ResponderVocab):
                         | RE("ぺろぺろ|ペロペロ|ちゅっちゅ｜チュッチュ") >> R(self.response3) 
                         | R(self.response5)
                         )
-        self.voluntary = RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)") >> R(self.response4 self.favorite)
+        self.voluntary = RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)") >> R(j(operator.rshift)(self.response4, self.favorite))
         
     @joinIO
     def for_mizutani(self, status):
