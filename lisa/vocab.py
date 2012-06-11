@@ -4,7 +4,7 @@ from collections import defaultdict
 from functools import partial
 import random
 
-class ResponderVocab:
+class Vocabulary:
     def __init__(self):
         self.impression = defaultdict(int)
     def choice(self, status, pattern, els):

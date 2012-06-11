@@ -1,13 +1,27 @@
 from __future__ import unicode_literals
 from curtana.lib.monadIO import *
-
+import shelve
 import datetime
+from itertools import ifilter
 
-class ResponderBase:
+PATH = "/home/fumiaki/Dropbox/Python/lisabot3/var/lisabot3.p"
+
+class Storable(attributes):
+    def load(self, path):
+        data = shelve.open(path, protocol=1)
+        for key in ifilter(data.__contains__, self.__class__.store_attributes):
+            self.__dict__[key] = data[key]
+    
+    def save(self, path):
+        data = shelve.open(path, protocol=1)
+        for key in self.__class__.store_attributes:
+            data[key] = self.__dict__[key]
+
+class Base(object):
 
     def __init__(self, api):
         self.api = api
-    
+
     @wrapIO
     def reply(self, status, text):
         return self.api.updateStatus(status="@{0} {1}".format(status["user"]["screen_name"], text),
@@ -19,7 +33,21 @@ class ResponderBase:
     @wrapIO
     def favorite(self, status):
         return self.api.createFavorite(id=unicode(status["id"]))
-
+    
+    @joinIO
+    def command(self, status):
+        if "#ctrl" in status["text"] and status["user"]["screen_name"] == "fumieval":
+            
+            line = status["text"][status["text"].find(u"$$") + 2:]
+            cmd = line.split()
+            if cmd[0] == "dump":
+                #FIXME Base doesn't provide saving
+                self.save(open(PATH, "w"))
+                print "{0} Dumped to {1}".format(datetime.datetime.today().strftime("%D %H:%M:%S"), PATH)
+                return Return(IOOne)
+        
+        return Return(IOZero)
+    
     @joinIO
     def ping(self, status):
         if "#ping" in status["text"]:
@@ -41,5 +69,6 @@ class ResponderBase:
     def action(self, status):
         return ( Satisfy(lambda: self.isnotStatus(status))
                | Satisfy(lambda: self.isignorable(status))
+               | self.command(status)
                | self.ping(status)
                | Satisfy(lambda: self.is_limit_exceeded(status)))
