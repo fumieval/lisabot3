@@ -45,12 +45,13 @@ class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
         self.voluntary = (RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)")
                          >> R(compose(star(OP.rshift), fanout(self.response4, self.favorite)))
                          |RE("((^|[^ァ-ヾ])リサ|^りさ)") >> R(self.favorite))
+    
     def learn(self, text, in_reply_to_status_id):
-        self.markov_table.update(text)
+        self.markov_table.update(G.wakati(text))
         if in_reply_to_status_id:
             G.update_association(self.assoc_table,
-                ENTITIES.sub("", self.api.showStatus(id=in_reply_to_status_id)["text"]),
-                text)
+                ENTITIES.sub("", G.wakati(self.api.showStatus(id=in_reply_to_status_id)["text"])),
+                G.wakati(text))
     @joinIO
     def for_mizutani(self, status):
         

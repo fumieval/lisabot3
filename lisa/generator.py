@@ -9,17 +9,14 @@ import random
 import string
 from functools import partial
 from operator import lt, itemgetter
-from itertools import imap, ifilter, islice, izip
+from itertools import imap, ifilter, islice, izip, chain, repeat, product
 from curtana.lib.prelude import compose, star
 
-from lisabot2.core.chatter.util import *
-
-# coding: utf-8
-
 from collections import defaultdict, Counter
-from operator import itemgetter
-from itertools import chain, repeat, product
-import random
+
+def wakati(text):
+    import MeCab
+    return MeCab.Tagger(str("-Owakati")).parse(text).decode("utf-8").strip(" \n").split(" ")
 
 class Table:
     def __init__(self):
@@ -83,21 +80,28 @@ def generate(table,
     return result
 
 def load():
-    import MeCab
-    def wakati(text):
-        return MeCab.Tagger(str("-Owakati")).parse(text).decode("utf-8").strip(" \n").split(" ")
-
     table = Table()
     for line in open("corpus.txt"):
         table.update(wakati(line.strip(str("\r\n"))))
     return table
+
+def parse(x):
+    result = []
+    tagger = MeCab.Tagger(str(""))
+    for line in tagger.parse(x.encode("utf-8")).decode("utf-8").split("\n"):
+        if line == "EOS": return result
+        word, data = line.split("\t")
+        result.append((word, data.split(",")))
+
+def isterminal(word):
+    return word == START_SYMBOL or word == END_SYMBOL
 
 def format_words(wordlist, conversation=False):
     """単語のリストから文章を作る。"""
     flag = False
     result = ""
     for word in wordlist:
-        if isterminal(word):
+        if word is None:
             continue
         if word[0] == "#":
             result += " "
