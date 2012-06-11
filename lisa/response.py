@@ -45,7 +45,12 @@ class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
         self.voluntary = (RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)")
                          >> R(compose(star(OP.rshift), fanout(self.response4, self.favorite)))
                          |RE("((^|[^ァ-ヾ])リサ|^りさ)") >> R(self.favorite))
-
+    def learn(self, text, in_reply_to_status_id):
+        self.markov_table.update(text)
+        if in_reply_to_status_id:
+            G.update_association(self.assoc_table,
+                ENTITIES.sub("", self.api.showStatus(id=in_reply_to_status_id)["text"]),
+                text)
     @joinIO
     def for_mizutani(self, status):
         
@@ -66,16 +71,13 @@ class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
     def for_everyone(self, status):
         text_lower = status["text"].lower()
         text = ENTITIES.sub("", status["text"])
-        
+        self.learn(text, status["in_reply_to_status_id"])
         level = 0
         if status["in_reply_to_screen_name"] == None:
             level += 1
         elif status["in_reply_to_screen_name"] == self.screen_name:
             level += 2
-        elif status["in_reply_to_status_id"]:
-            G.update_association(self.assoc_table,
-                ENTITIES.sub("", self.api.showStatus(id=status["in_reply_to_status_id"])["text"]),
-                text)
+
         if re.search("@" + self.screen_name.lower() + "[^\w_]", text_lower):
             level += 2
         
