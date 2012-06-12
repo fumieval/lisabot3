@@ -14,16 +14,17 @@ class Execute(threading.Thread):
         self.action.do()
 
 def consume(name, responder):
-    stream = userstream.iterstream(userstream.streamopen(name))
-    for status in stream:
+    for status in userstream.iterstream(userstream.streamopen(name)):
         Execute(responder.action(status)).start()
 
-def main():
-    consume(REGISTERD_NAME, ResponderLisa(REGISTERD_NAME))
+def main(name):
+    consume(name, ResponderLisa(name))
 
 if __name__ == "__main__":
     import sys
     if sys.argv[1] == "run":
-        main()
+        main(sys.argv[2])
     elif sys.argv[1] == "post":
         ApiMod.from_name(REGISTERD_NAME).updateStatus(status=sys.argv[2])
+    elif sys.argv[1] == "tweet":
+        pass #G.format_words(G.generate(table, N=32, P=100, extra=3)[16][0])

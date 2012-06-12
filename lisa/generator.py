@@ -16,7 +16,7 @@ from collections import defaultdict, Counter
 
 def wakati(text):
     import MeCab
-    return MeCab.Tagger(str("-Owakati")).parse(text).decode("utf-8").strip(" \n").split(" ")
+    return MeCab.Tagger(str("-Owakati")).parse(text.encode("utf-8")).decode("utf-8").strip(" \n").split(" ")
 
 class Table:
     def __init__(self):
@@ -50,7 +50,7 @@ def update_association(table, source, target):
     
 def generate(table,
              association=None, sentence=None,
-             N=16, P=200, first=20, extra=5,
+             N=16, P=200, first=20, extra=3,
              f=lambda value, bias:value / 10 * bias):
     
     if association:
@@ -58,7 +58,7 @@ def generate(table,
     else:
         bias = lambda x: 0
     
-    stack = [([None, x], f(v, bias(x))) for x, v in table[None, None].most_common(first)]
+    stack = [([None, x], f(v, bias(x))) for x, v in table[None, None].iteritems() if random.random() < 0.1]
     
     result = []
     while stack:
@@ -73,7 +73,7 @@ def generate(table,
         target = table[seq[-2], seq[-1]]
 
         for word, v in target.most_common(extra):
-            stack.append((seq + [word], f(v, bias(x))))
+            stack.append((seq + [word], score + f(v, bias(x))))
 
         stack.sort(key=itemgetter(1))
         stack = stack[:P]
@@ -81,8 +81,8 @@ def generate(table,
 
 def load():
     table = Table()
-    for line in open("corpus.txt"):
-        table.update(wakati(line.strip(str("\r\n"))))
+    for line in open("sample.txt").read().splitlines():
+        table.update(wakati(line.decode("utf-8")))
     return table
 
 def parse(x):
@@ -92,9 +92,6 @@ def parse(x):
         if line == "EOS": return result
         word, data = line.split("\t")
         result.append((word, data.split(",")))
-
-def isterminal(word):
-    return word == START_SYMBOL or word == END_SYMBOL
 
 def format_words(wordlist, conversation=False):
     """単語のリストから文章を作る。"""
@@ -106,14 +103,14 @@ def format_words(wordlist, conversation=False):
         if word[0] == "#":
             result += " "
         if conversation and word == "リサ":
-            result += "%(name)s"
+            result += "{name}"
             continue
         if word in ["俺", "僕", "私", "わし", "あたい", "あたし", "わたし"]:
             result += "自分"
             continue
 
         if conversation and word in ["お前", "きみ", "あなた", "貴方", "てめえ", "あんた", "貴様"]:
-            result += "%(name)s氏"
+            result += "{name}氏"
             continue
         newflag = all(x in string.ascii_letters for x in word)
         result += " " * (flag and newflag) + word

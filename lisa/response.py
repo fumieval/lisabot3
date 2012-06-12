@@ -11,6 +11,7 @@ import cPickle
 import re
 import datetime
 import operator as OP
+import random
 
 from itertools import imap
 from functools import partial
@@ -27,31 +28,31 @@ class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
     store_attributes = ["impression", "talked", "markov_table", "assoc_table"]
     def __init__(self, name):
         from curtana.lib.parser_aliases import RE, R
-        ResponderBase.__init__(self, ApiMod.from_name(name))
-        ResponderVocab.__init__(self)
+        B.Base.__init__(self, ApiMod.from_name(name))
+        V.Vocabulary.__init__(self)
         
         self.screen_name = name
         self.talked = []
         self.assoc_table = Counter()
         self.markov_table = G.Table()
-        name, talked, assoc_table = cPickle.load(open(PATH, "r"))
+        self.load(B.PATH)
 
         self.pattern = (RE("もしゃもしゃ|モシャモシャ|もふもふ|モフモフ") >> R(self.response0)
                         | RE("(^|む|[^く])ぎゅ[っうぅー]?") >> R(self.response1)
                         | RE("なでなで|ナデナデ") >> R(self.response2)
                         | RE("ぺろぺろ|ペロペロ|ちゅっちゅ｜チュッチュ") >> R(self.response3) 
-                        | R(self.response5)
                         )
         self.voluntary = (RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)")
                          >> R(compose(star(OP.rshift), fanout(self.response4, self.favorite)))
-                         |RE("((^|[^ァ-ヾ])リサ|^りさ)") >> R(self.favorite))
+                         #|RE("((^|[^ァ-ヾ])リサ|^りさ)") >> R(self.favorite)
+                         )
     
-    def learn(self, text, in_reply_to_status_id):
-        self.markov_table.update(G.wakati(text))
+    def learn(self, sentence, in_reply_to_status_id):
+        self.markov_table.update(sentence)
         if in_reply_to_status_id:
             G.update_association(self.assoc_table,
-                ENTITIES.sub("", G.wakati(self.api.showStatus(id=in_reply_to_status_id)["text"])),
-                G.wakati(text))
+                G.wakati(ENTITIES.sub("", self.api.showStatus(id=in_reply_to_status_id)["text"])),
+                sentence)
     @joinIO
     def for_mizutani(self, status):
         
@@ -72,7 +73,8 @@ class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
     def for_everyone(self, status):
         text_lower = status["text"].lower()
         text = ENTITIES.sub("", status["text"])
-        self.learn(text, status["in_reply_to_status_id"])
+        sentence = G.wakati(text)
+        self.learn(sentence, status["in_reply_to_status_id"])
         level = 0
         if status["in_reply_to_screen_name"] == None:
             level += 1
@@ -94,14 +96,16 @@ class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
                     action = self.pattern(text)
                     if action:
                         return action(status)
-        
+                
+                return self.reply(status, G.format_words(random.choice(G.generate(self.markov_table, self.assoc_table, sentence))[0], conversation=True))
+                
         return Return(IOZero)
 
     def issleeping(self):
         return False
     
     def action(self, status):
-        return (ResponderBase.action(self, status)
+        return (B.Base.action(self, status)
                 | Satisfy(self.issleeping)
                 | self.for_mizutani(status)
                 | self.for_everyone(status)

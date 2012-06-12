@@ -2,20 +2,20 @@ from __future__ import unicode_literals
 from curtana.lib.monadIO import *
 import shelve
 import datetime
-from itertools import ifilter
+from itertools import ifilter, imap
 
-PATH = "/home/fumiaki/Dropbox/Python/lisabot3/var/lisabot3.p"
+PATH = "/home/fumiaki/Dropbox/Python/lisabot3/var/lisabot3.shelf"
 
-class Storable(attributes):
+class Storable():
     def load(self, path):
         data = shelve.open(path, protocol=1)
-        for key in ifilter(data.__contains__, self.__class__.store_attributes):
+        for key in ifilter(data.__contains__, imap(str, self.__class__.store_attributes)):
             self.__dict__[key] = data[key]
     
     def save(self, path):
         data = shelve.open(path, protocol=1)
         for key in self.__class__.store_attributes:
-            data[key] = self.__dict__[key]
+            data[str(key)] = self.__dict__[key]
 
 class Base(object):
 
@@ -42,7 +42,7 @@ class Base(object):
             cmd = line.split()
             if cmd[0] == "dump":
                 #FIXME Base doesn't provide saving
-                self.save(open(PATH, "w"))
+                self.save(PATH)
                 print "{0} Dumped to {1}".format(datetime.datetime.today().strftime("%D %H:%M:%S"), PATH)
                 return Return(IOOne)
         
