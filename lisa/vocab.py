@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from collections import defaultdict
 from functools import partial
 import random
-
+FOLLOW_COMPLETE = "@{0} フォロー完了"
 class Vocabulary:
     def __init__(self):
         self.impression = defaultdict(int)
@@ -15,7 +15,6 @@ class Vocabulary:
         return random.choice(els).format(name=status["user"]["name"])
     
     def response0(self, status):
-
         r = partial(self.reply, status)
         return r(self.choice(status,
                              [(15, ["きゃうん！", "きゃうん…", "きゃん！", "……コンティニュー//", "……つづけて//", "やめて…",]),
@@ -39,7 +38,7 @@ class Vocabulary:
         return r(self.choice([(6, ["きゃうん！", "きゃうん…", "きゃん！", "やめて、{name}氏", "{name}氏、やめて"])],
                             ["やめて、{name}氏","{name}氏、やめて","やめて…","やめて"]))
 
-    def response4(self, status):
+    def chan_ha_fuyou(self, status):
         return self.reply(status, "《ちゃん》は不要")
 
     def response5(self, status):

@@ -34,6 +34,11 @@ class Base(object):
     def favorite(self, status):
         return self.api.createFavorite(id=unicode(status["id"]))
     
+    @wrapIO
+    def track_unfollow(self, status):
+        if "#Lisa_math_unfollow_me" in status["text"]:
+            return self.api.destroyFriendship(user_id=status["user"]["id_str"])
+    
     @joinIO
     def command(self, status):
         if "#ctrl" in status["text"] and status["user"]["screen_name"] == "fumieval":

@@ -50,32 +50,32 @@ def update_association(table, source, target):
     
 def generate(table,
              association=None, sentence=None,
-             N=16, P=200, first=20, extra=3,
-             f=lambda value, bias:value / 10 * bias):
+             N=16, P=200, first=0.8, extra=2,
+             f=lambda value, bias:value / 10 + bias):
     
     if association:
         bias = lambda word: sum(association[w, word] for w in sentence)
     else:
         bias = lambda x: 0
-    
-    stack = [([None, x], f(v, bias(x))) for x, v in table[None, None].iteritems() if random.random() < 0.1]
+    target = table[None, None]
+    stack = [([None, x], f(v, bias(x))) for x, v in target.most_common(int(len(target) * first))]
+    stack.sort(key=itemgetter(1), reverse=True)
+    stack = stack[:P]    
     
     result = []
     while stack:
         seq, score = stack.pop(0)
         
-        if seq[-1] == None:
-            result.append((seq, score))
-            if len(result) > N:
-                return result
-            continue
-        
         target = table[seq[-2], seq[-1]]
+        for word in random.sample(target.keys(), min(extra, len(target))):
+            if word == None:
+                result.append((seq, score))
+                if len(result) > N:
+                    return result
+                continue
+            stack.append((seq + [word], score + f(target[word], bias(x))))
 
-        for word, v in target.most_common(extra):
-            stack.append((seq + [word], score + f(v, bias(x))))
-
-        stack.sort(key=itemgetter(1))
+        stack.sort(key=itemgetter(1), reverse=True)
         stack = stack[:P]
     return result
 
@@ -97,9 +97,18 @@ def format_words(wordlist, conversation=False):
     """単語のリストから文章を作る。"""
     flag = False
     result = ""
+    space = False
     for word in wordlist:
         if word is None:
             continue
+        if word == "　":
+            if space:
+                continue
+            else:
+                space = True
+        else:
+            space = False
+            
         if word[0] == "#":
             result += " "
         if conversation and word == "リサ":

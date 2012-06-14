@@ -6,7 +6,6 @@ from curtana.lib.monadIO import *
 from curtana.lib.stream import Map, BufferBy
 from curtana.common.twitterlib import ApiMod
 
-
 import cPickle
 import re
 import datetime
@@ -19,17 +18,18 @@ from collections import Counter
 
 import lisabot3.lisa.generator as G
 import lisabot3.responder as B
-import lisabot3.lisa.vocab as V
+from lisabot3.lisa import vocab
+
 GROUPER = BufferBy(compose(partial(OP.lt, 140 - 6), compose(sum, Map(len))))
 
 ENTITIES = re.compile("[QR]T @\w+.*|\.(@\w+ )+|http:\/\/(\w+|\.|\/)*|@\w+")
 
-class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
+class ResponderLisa(B.Base, B.Storable, vocab.Vocabulary):
     store_attributes = ["impression", "talked", "markov_table", "assoc_table"]
     def __init__(self, name):
         from curtana.lib.parser_aliases import RE, R
         B.Base.__init__(self, ApiMod.from_name(name))
-        V.Vocabulary.__init__(self)
+        vocab.Vocabulary.__init__(self)
         
         self.screen_name = name
         self.talked = []
@@ -43,7 +43,7 @@ class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
                         | RE("ぺろぺろ|ペロペロ|ちゅっちゅ｜チュッチュ") >> R(self.response3) 
                         )
         self.voluntary = (RE("((^|[^ァ-ヾ])リサ|(^|[^ぁ-ゞ])りさ)(ちゃん|チャン)")
-                         >> R(compose(star(OP.rshift), fanout(self.response4, self.favorite)))
+                         >> R(compose(star(OP.rshift), fanout(self.chan_ha_fuyou, self.favorite)))
                          #|RE("((^|[^ァ-ヾ])リサ|^りさ)") >> R(self.favorite)
                          )
     
@@ -53,6 +53,7 @@ class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
             G.update_association(self.assoc_table,
                 G.wakati(ENTITIES.sub("", self.api.showStatus(id=in_reply_to_status_id)["text"])),
                 sentence)
+    
     @joinIO
     def for_mizutani(self, status):
         
@@ -97,7 +98,7 @@ class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
                     if action:
                         return action(status)
                 
-                return self.reply(status, G.format_words(random.choice(G.generate(self.markov_table, self.assoc_table, sentence))[0], conversation=True))
+                return self.reply(status, G.format_words(random.choice(G.generate(self.markov_table, self.assoc_table, sentence, N=8, P=50, first=0.5, extra=6))[0], conversation=True).format(name=status["user"]["name"]))
                 
         return Return(IOZero)
 
@@ -110,4 +111,3 @@ class ResponderLisa(B.Base, V.Vocabulary, B.Storable):
                 | self.for_mizutani(status)
                 | self.for_everyone(status)
                 | Return(IOOne))
-    
